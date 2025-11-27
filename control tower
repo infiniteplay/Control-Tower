@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Finifi — AP Dashboards (Prototype)</title>
+  <style>
+    :root{
+      --bg:#f6f7f9;
+      --card:#ffffff;
+      --muted:#65707a;
+      --accent:#0f6cff;
+      --border:#e6e9ee;
+      --success:#1b9e66;
+      --danger:#d64545;
+      --gap:16px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      color:#182026;
+    }
+    html,body{height:100%;margin:0;background:var(--bg)}
+    .app{
+      max-width:1200px;margin:28px auto;padding:20px;
+      display:grid;grid-template-columns:1fr;gap:var(--gap);
+    }
+    header{
+      display:flex;align-items:center;justify-content:space-between;gap:16px;
+    }
+    .title{
+      display:flex;flex-direction:column;
+    }
+    .title h1{margin:0;font-size:18px;font-weight:600}
+    .title p{margin:0;color:var(--muted);font-size:13px}
+    .toolbar{display:flex;gap:8px;align-items:center}
+    .btn{
+      background:#fff;border:1px solid var(--border);padding:8px 12px;border-radius:8px;font-size:13px;color:var(--muted);
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap:var(--gap);
+    }
+
+    /* cards */
+    .card{
+      background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;
+      box-shadow: 0 1px 0 rgba(16,24,40,0.02);
+    }
+    .card h3{margin:0 0 8px 0;font-size:14px}
+    .metric{
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+      margin-bottom:10px;
+    }
+    .metric .value{font-size:20px;font-weight:600}
+    .metric .label{font-size:12px;color:var(--muted)}
+    .small{font-size:12px;color:var(--muted)}
+    .muted{color:var(--muted)}
+    .spark{width:120px;height:34px}
+
+    /* full width sections */
+    .full{grid-column:1 / -1;display:grid;grid-template-columns:repeat(4,1fr);gap:var(--gap)}
+    .wide{grid-column:1 / -1}
+
+    /* table */
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th,td{padding:8px;border-bottom:1px solid #f2f4f7;text-align:left}
+    th{font-size:12px;color:var(--muted);font-weight:600}
+
+    /* responsive */
+    @media (max-width:1100px){
+      .grid{grid-template-columns:repeat(2,1fr)}
+      .full{grid-template-columns:repeat(2,1fr)}
+    }
+    @media (max-width:640px){
+      .grid{grid-template-columns:1fr}
+      .full{grid-template-columns:1fr}
+      .title h1{font-size:16px}
+    }
+
+    .legend{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--muted)}
+    .dot{width:10px;height:10px;border-radius:50%}
+    .dot.accent{background:var(--accent)}
+    .dot.danger{background:var(--danger)}
+    .dot.success{background:var(--success)}
+
+    /* subtle controls */
+    details{border:1px dashed transparent}
+    .note{font-size:12px;color:var(--muted);margin-top:8px}
+  </style>
+</head>
+<body>
+  <main class="app" id="app">
+    <header>
+      <div class="title">
+        <h1>AP Dashboards — Prototype</h1>
+        <p>Operational · Risk · Compliance · Cash · Performance</p>
+      </div>
+      <div class="toolbar">
+        <button class="btn" id="refreshBtn">Refresh</button>
+        <button class="btn" id="demoToggle">Toggle Demo Data</button>
+      </div>
+    </header>
+
+    <!-- grid of compact dashboards -->
+    <section class="grid" id="mainGrid">
+
+      <!-- 1. Control Tower -->
+      <div class="card wide">
+        <h3>Intelligent AP Control Tower</h3>
+        <div style="display:flex;gap:12px;align-items:center;justify-content:space-between">
+          <div style="flex:1">
+            <div class="metric">
+              <div>
+                <div class="value" id="ct-inflight">—</div>
+                <div class="label">Invoices in flight</div>
+              </div>
+              <svg class="spark" id="ct-spark" viewBox="0 0 120 34"></svg>
+            </div>
+
+            <div class="metric">
+              <div>
+                <div class="value" id="ct-bottle">—</div>
+                <div class="label">Current bottleneck (team)</div>
+              </div>
+              <div style="text-align:right">
+                <div class="small" id="ct-bottlePct">—</div>
+                <div class="small muted">Avg cycle time: <span id="ct-cycle">—</span> days</div>
+              </div>
+            </div>
+
+            <div class="note">Replace numbers with live pipeline counts and add action links from invoice rows.</div>
+          </div>
+
+          <div style="width:300px">
+            <table>
+              <thead><tr><th>Stage</th><th>Count</th><th>%</th></tr></thead>
+              <tbody id="ct-stage-table">
+                <!-- rows injected -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Working Capital -->
+      <div class="card">
+        <h3>Working Capital Forecast</h3>
+        <div class="metric">
+          <div>
+            <div class="value" id="wc-cashreq">—</div>
+            <div class="label">Cash required (30d)</div>
+          </div>
+          <svg class="spark" id="wc-spark" viewBox="0 0 120 34"></svg>
+        </div>
+
+        <div class="metric">
+          <div>
+            <div class="value" id="wc-discounts">—</div>
+            <div class="label">Lost discounts (90d)</div>
+          </div>
+          <div class="small">Eligible for early-pay: <span id="wc-eligible">—</span></div>
+        </div>
+
+        <div class="note">Hook this to due-date engine and discount terms.</div>
+      </div>
+
+      <!-- 3. Risk & Fraud Radar -->
+      <div class="card">
+        <h3>Risk & Fraud Radar</h3>
+        <div class="metric">
+          <div>
+            <div class="value" id="rf-duplicates">—</div>
+            <div class="label">Duplicate attempts flagged</div>
+          </div>
+          <div class="small">High risk value: <span id="rf-value">—</span></div>
+        </div>
+
+        <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
+          <div style="flex:1">
+            <table>
+              <thead><tr><th>Vendor</th><th>Issue</th><th>Amount</th></tr></thead>
+              <tbody id="rf-table"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Compliance & GST Recon -->
+      <div class="card">
+        <h3>Compliance & GST Reconciliation</h3>
+        <div class="metric">
+          <div>
+            <div class="value" id="gst-itc">—</div>
+            <div class="label">ITC at risk</div>
+          </div>
+          <svg class="spark" id="gst-spark" viewBox="0 0 120 34"></svg>
+        </div>
+        <div class="metric">
+          <div class="small">Vendors not filing: <strong id="gst-nonfile">—</strong></div>
+          <div class="small">Mismatches this month: <strong id="gst-mismatch">—</strong></div>
+        </div>
+        <div class="note">Wire this to GSTR2A/2B matching outputs.</div>
+      </div>
+
+      <!-- 5. 3-Way Match Hub -->
+      <div class="card">
+        <h3>PO–GRN–Invoice 3-Way Match</h3>
+        <div class="metric">
+          <div>
+            <div class="value" id="m-matchRate">—%</div>
+            <div class="label">Straight-through match rate</div>
+          </div>
+          <svg class="spark" id="m-spark" viewBox="0 0 120 34"></svg>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:10px">
+          <div style="flex:1">
+            <div class="small">Failure categories</div>
+            <table>
+              <thead><tr><th>Type</th><th>Count</th></tr></thead>
+              <tbody id="m-failcat"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 6. Vendor Scorecard -->
+      <div class="card">
+        <h3>Vendor Performance & Risk</h3>
+        <div class="metric">
+          <div>
+            <div class="value" id="v-goodpct">—%</div>
+            <div class="label">A-grade vendors</div>
+          </div>
+          <div>
+            <div class="small">Top offenders</div>
+            <div id="v-top" class="small muted">—</div>
+          </div>
+        </div>
+
+        <table>
+          <thead><tr><th>Vendor</th><th>Score</th><th>Issues</th></tr></thead>
+          <tbody id="v-table"></tbody>
+        </table>
+      </div>
+
+      <!-- 7. Real Cost of Delay -->
+      <div class="card">
+        <h3>Real Cost of Delay</h3>
+        <div class="metric">
+          <div>
+            <div class="value" id="cd-total">—</div>
+            <div class="label">Total cost (period)</div>
+          </div>
+          <svg class="spark" id="cd-spark" viewBox="0 0 120 34"></svg>
+        </div>
+
+        <div class="small">Breakdown</div>
+        <table>
+          <thead><tr><th>Type</th><th>Amount</th></tr></thead>
+          <tbody id="cd-table"></tbody>
+        </table>
+      </div>
+
+      <!-- 8. Audit Readiness -->
+      <div class="card">
+        <h3>Audit Readiness</h3>
+        <div class="metric">
+          <div>
+            <div class="value" id="ar-riskInv">—</div>
+            <div class="label">Invoices at risk</div>
+          </div>
+          <div class="small">Unresolved exceptions: <strong id="ar-exc">—</strong></div>
+        </div>
+
+        <div class="note">Include links to invoices & policy traces for auditor review.</div>
+      </div>
+
+      <!-- 9. First-Time-Match -->
+      <div class="card">
+        <h3>First-Time-Match & First-Time-Right</h3>
+        <div class="metric">
+          <div>
+            <div class="value" id="ft-firstRight">—%</div>
+            <div class="label">Invoices processed without touch</div>
+          </div>
+          <div class="small">AI reader accuracy: <span id="ft-accuracy">—%</span></div>
+        </div>
+
+        <div class="note">This surface proves ROI from AI & rules.</div>
+      </div>
+
+      <!-- 10. Accrual vs Actual -->
+      <div class="card">
+        <h3>Accrual → Actual Variance</h3>
+        <div class="metric">
+          <div>
+            <div class="value" id="av-variance">—</div>
+            <div class="label">Net variance (period)</div>
+          </div>
+          <div class="small">Debit/Credit notes: <span id="av-diff">—</span></div>
+        </div>
+
+        <table>
+          <thead><tr><th>Cost Centre</th><th>Accrued</th><th>Actual</th></tr></thead>
+          <tbody id="av-table"></tbody>
+        </table>
+      </div>
+
+      <!-- 11. Category Spend Intelligence -->
+      <div class="card full">
+        <h3 style="grid-column:1 / -1">Category Spend Intelligence</h3>
+
+        <div>
+          <div class="metric">
+            <div>
+              <div class="value" id="cs-totalSpend">—</div>
+              <div class="label">Total spend (period)</div>
+            </div>
+            <div class="small">Non-PO %: <strong id="cs-nonpo">—%</strong></div>
+          </div>
+
+          <table>
+            <thead><tr><th>Category</th><th>Spend</th><th>Policy adherence</th></tr></thead>
+            <tbody id="cs-table"></tbody>
+          </table>
+        </div>
+
+        <div>
+          <div class="small">Categories with disputes</div>
+          <table>
+            <thead><tr><th>Category</th><th>Count</th></tr></thead>
+            <tbody id="cs-disputes"></tbody>
+          </table>
+        </div>
+
+        <div>
+          <div class="small">Budget vs Actual</div>
+          <table>
+            <thead><tr><th>Category</th><th>Budget</th><th>Actual</th></tr></thead>
+            <tbody id="cs-budget"></tbody>
+          </table>
+        </div>
+
+        <div>
+          <div class="small">Notes</div>
+          <p class="note">Pin categories with recurring non-compliance and route to procurement owners.</p>
+        </div>
+      </div>
+
+      <!-- 12. SLA Compliance -->
+      <div class="card wide">
+        <h3>SLA Compliance (Real-time)</h3>
+        <div style="display:flex;gap:12px;align-items:flex-start">
+          <div style="flex:1">
+            <div class="metric">
+              <div>
+                <div class="value" id="sla-invoice">—%</div>
+                <div class="label">Invoice processing SLA</div>
+              </div>
+              <svg class="spark" id="sla-spark" viewBox="0 0 120 34"></svg>
+            </div>
+
+            <div class="metric">
+              <div>
+                <div class="value" id="sla-grn">—%</div>
+                <div class="label">GRN SLA</div>
+              </div>
+              <div class="small">Plant B: <strong id="sla-plant">—%</strong></div>
+            </div>
+          </div>
+
+          <div style="width:320px">
+            <table>
+              <thead><tr><th>Team / Plant</th><th>SLA %</th><th>Breaches</th></tr></thead>
+              <tbody id="sla-table"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <footer style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
+      <div class="muted small">Prototype — replace demo functions with live data connectors</div>
+      <div class="muted small">© Finifi</div>
+    </footer>
+  </main>
+
+  <script>
+    // ---- Demo data generator & utilities ----
+    // Replace these with real API calls or embed into your platform.
+    const DEMO = { enabled: true };
+
+    function currency(x){ return '₹' + x.toLocaleString('en-IN'); }
+    function percent(x){ return (x).toFixed(1) + '%'; }
+
+    // small helper to draw a simple inline sparkline (polyline)
+    function drawSpark(svgId, data, color){
+      const svg = document.getElementById(svgId);
+      if(!svg) return;
+      const w = 120, h = 34;
+      svg.innerHTML = '';
+      const max = Math.max(...data), min = Math.min(...data);
+      const norm = d => (max === min) ? h/2 : h - ((d - min) / (max - min)) * (h - 6) - 3;
+      const step = w / (data.length - 1 || 1);
+      const points = data.map((d,i)=> `${i*step},${norm(d)}`).join(' ');
+      const poly = document.createElementNS('http://www.w3.org/2000/svg','polyline');
+      poly.setAttribute('points', points);
+      poly.setAttribute('fill', 'none');
+      poly.setAttribute('stroke', color || '#0f6cff');
+      poly.setAttribute('stroke-width', '2');
+      svg.appendChild(poly);
+      // subtle average line
+      const avg = data.reduce((a,b)=>a+b,0)/data.length;
+      const y = norm(avg);
+      const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+      line.setAttribute('x1',0);line.setAttribute('y1',y);line.setAttribute('x2',w);line.setAttribute('y2',y);
+      line.setAttribute('stroke','#e6eefc');line.setAttribute('stroke-width','1');
+      svg.insertBefore(line, poly);
+    }
+
+    function setText(id, text){ const el=document.getElementById(id); if(el) el.textContent = text; }
+
+    // ---- Populate all dashboards with sample/demo values ----
+    function refreshAll(){
+      // Control Tower
+      const inflight = DEMO.enabled ? 1248 : 0;
+      setText('ct-inflight', inflight);
+      setText('ct-bottle', 'Purchase Team');
+      setText('ct-bottlePct', 'Blocking 37% of PO invoices');
+      setText('ct-cycle', (DEMO.enabled ? 6.8 : '—'));
+      drawSpark('ct-spark', [5,6,7,8,6,6,7,9,8,7,6], '#0f6cff');
+
+      // stage table
+      const stages = [
+        ['Received', 420, '34%'],
+        ['Parsed', 300, '24%'],
+        ['Matched', 520, '42%'],
+        ['Approved', 6, '0.5%']
+      ];
+      const stbody = document.getElementById('ct-stage-table');
+      stbody.innerHTML = '';
+      stages.forEach(r=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td>`;
+        stbody.appendChild(tr);
+      });
+
+      // Working capital
+      setText('wc-cashreq', currency(DEMO.enabled ? 42000000 : 0));
+      setText('wc-discounts', currency(DEMO.enabled ? 3800000 : 0));
+      setText('wc-eligible', DEMO.enabled ? '178 invoices' : '—');
+      drawSpark('wc-spark', [10,14,12,9,8,11,15,14,12], '#1b9e66');
+
+      // Risk & Fraud
+      setText('rf-duplicates', DEMO.enabled ? 18 : 0);
+      setText('rf-value', currency(DEMO.enabled ? 9200000 : 0));
+      const rft = document.getElementById('rf-table');
+      rft.innerHTML = '';
+      [['Vendor A','Duplicate invoice', '₹4,20,000'],['Vendor Z','Missing GST', '₹12,00,000'],['Vendor X','Rate anomaly','₹2,50,000']]
+        .forEach(r=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td>`; rft.appendChild(tr);});
+
+      // GST Recon
+      setText('gst-itc', currency(DEMO.enabled ? 11000000 : 0));
+      setText('gst-nonfile', DEMO.enabled ? 34 : 0);
+      setText('gst-mismatch', DEMO.enabled ? 124 : 0);
+      drawSpark('gst-spark', [120,130,115,108,140,125], '#d64545');
+
+      // 3-Way Match
+      setText('m-matchRate', (DEMO.enabled ? 57 : 0));
+      drawSpark('m-spark', [50,52,55,57,58,57,60,62], '#0f6cff');
+      const mfc = document.getElementById('m-failcat'); mfc.innerHTML='';
+      [['Missing GRN',312],['Rate mismatch',128],['Quantity mismatch',87],['PO expired',21]].forEach(r=>{
+        const tr=document.createElement('tr'); tr.innerHTML=`<td>${r[0]}</td><td>${r[1]}</td>`; mfc.appendChild(tr);
+      });
+
+      // Vendor scorecard
+      setText('v-goodpct', DEMO.enabled ? 18 : 0);
+      setText('v-top', DEMO.enabled ? 'Vendor Z, Vendor A' : '—');
+      const vt = document.getElementById('v-table'); vt.innerHTML='';
+      [['Vendor A',68,'Missing GST, Duplicate attempt'],['Vendor B',92,'Good'],['Vendor X',54,'Rate mismatch, late invoicing']]
+        .forEach(r=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td>`; vt.appendChild(tr); });
+
+      // Cost of delay
+      setText('cd-total', currency(DEMO.enabled ? 7200000 : 0));
+      drawSpark('cd-spark', [120,100,130,140,110], '#d64545');
+      const cdt = document.getElementById('cd-table'); cdt.innerHTML='';
+      [['Late fees',currency(1200000)],['Lost discounts',currency(3800000)],['ITC delay',currency(2200000)]].forEach(r=>{
+        const tr=document.createElement('tr'); tr.innerHTML=`<td>${r[0]}</td><td>${r[1]}</td>`; cdt.appendChild(tr);
+      });
+
+      // Audit readiness
+      setText('ar-riskInv', DEMO.enabled ? 78 : 0);
+      setText('ar-exc', DEMO.enabled ? 44 : 0);
+
+      // First-time-match
+      setText('ft-firstRight', DEMO.enabled ? 65 : 0);
+      setText('ft-accuracy', DEMO.enabled ? 95 : 0);
+
+      // Accrual vs actual
+      setText('av-variance', currency(DEMO.enabled ? 1120000 : 0));
+      setText('av-diff', currency(DEMO.enabled ? 220000 : 0));
+      const avt = document.getElementById('av-table'); avt.innerHTML='';
+      [['Manufacturing', currency(5200000), currency(5150000)],['Logistics',currency(2100000),currency(2500000)]].forEach(r=>{
+        const tr=document.createElement('tr'); tr.innerHTML=`<td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td>`; avt.appendChild(tr);
+      });
+
+      // Category spend
+      setText('cs-totalSpend', currency(DEMO.enabled ? 184000000 : 0));
+      setText('cs-nonpo', DEMO.enabled ? 21 : 0);
+      const cst = document.getElementById('cs-table'); cst.innerHTML='';
+      [['Logistics',currency(50000000),'82%'],['Raw Material',currency(84000000),'92%'],['Facilities',currency(15000000),'68%']].forEach(r=>{
+        const tr=document.createElement('tr'); tr.innerHTML=`<td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td>`; cst.appendChild(tr);
+      });
+      const csd = document.getElementById('cs-disputes'); csd.innerHTML='';
+      [['Logistics',42],['Facilities',11]].forEach(r=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td>${r[0]}</td><td>${r[1]}</td>`; csd.appendChild(tr);});
+      const csb = document.getElementById('cs-budget'); csb.innerHTML='';
+      [['Logistics',currency(52000000),currency(50000000)],['Raw Material',currency(80000000),currency(84000000)]].forEach(r=>{
+        const tr=document.createElement('tr'); tr.innerHTML=`<td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td>`; csb.appendChild(tr);
+      });
+
+      // SLA
+      setText('sla-invoice', DEMO.enabled ? 92 : 0);
+      setText('sla-grn', DEMO.enabled ? 78 : 0);
+      drawSpark('sla-spark', [90,92,91,93,92,92], '#0f6cff');
+      setText('sla-plant', DEMO.enabled ? '71' : '—');
+      const slt = document.getElementById('sla-table'); slt.innerHTML='';
+      [['Purchase Team', '88%', 12], ['Plant B', '71%', 27], ['AP Ops', '95%', 3]].forEach(r=>{
+        const tr=document.createElement('tr'); tr.innerHTML=`<td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td>`; slt.appendChild(tr);
+      });
+
+      // small visual sparklines
+      drawSpark('ct-spark', [5,7,9,8,6,12,9,8,7], '#0f6cff');
+    }
+
+    // ---- event handlers ----
+    document.getElementById('refreshBtn').addEventListener('click', ()=> refreshAll());
+    document.getElementById('demoToggle').addEventListener('click', ()=>{
+      DEMO.enabled = !DEMO.enabled;
+      refreshAll();
+    });
+
+    // initial render
+    refreshAll();
+
+    // ---- Integration notes (replace with your stack) ----
+    /**
+     * Integration tips:
+     *  - Replace refreshAll() demo assignments with fetch() calls to your APIs.
+     *  - Example mapping:
+     *      /api/ap/pipeline -> ct-stage-table + ct-inflight + ct-cycle
+     *      /api/ap/working-capital -> wc-cashreq, wc-discounts, wc-eligible
+     *      /api/ap/gst-recon -> gst-itc, gst-nonfile, gst-mismatch
+     *      /api/ap/match-stats -> m-matchRate, m-failcat
+     *  - For each table row, add anchor links to open invoice detail modals.
+     *  - For large datasets, implement server-side paging and filtered queries.
+     *  - Use your authentication tokens in fetch headers.
+     */
+  </script>
+</body>
+</html>
